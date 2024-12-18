@@ -269,7 +269,7 @@
       "name": "pdf",
       "rootUri": "../../pdf",
       "packageUri": "lib/",
-      "languageVersion": "2.19"
+      "languageVersion": "3.5"
     },
     {
       "name": "pdf_widget_wrapper",
@@ -404,7 +404,7 @@
       "languageVersion": "3.5"
     }
   ],
-  "generated": "2024-12-18T15:08:19.963513Z",
+  "generated": "2024-12-18T15:41:47.840682Z",
   "generator": "pub",
   "generatorVersion": "3.6.0",
   "flutterRoot": "file:///home/sumit/softwares/flutter",

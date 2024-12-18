@@ -31,7 +31,8 @@ dependencies:
   http: ">=1.2.2 <2.0.0"
   image: ^4.5.0
   meta: ">=1.15.0 <2.0.0"
-  pdf: ^3.11.1
+  pdf:
+    git: https://github.com/kumsumit/pdf.git
   pdf_widget_wrapper: '>=1.0.4 <2.0.0'
   plugin_platform_interface:
     git: https://github.com/kumsumit/plugin_platform_interface.git
