@@ -33,7 +33,8 @@ dependencies:
   meta: ">=1.15.0 <2.0.0"
   pdf:
     git: https://github.com/kumsumit/pdf.git
-  pdf_widget_wrapper: '>=1.0.4 <2.0.0'
+  pdf_widget_wrapper:
+    git: https://github.com/kumsumit/widget_wrapper.git
   plugin_platform_interface:
     git: https://github.com/kumsumit/plugin_platform_interface.git
   web: ^1.1.0

@@ -275,7 +275,7 @@
       "name": "pdf_widget_wrapper",
       "rootUri": "../../widget_wrapper",
       "packageUri": "lib/",
-      "languageVersion": "2.18"
+      "languageVersion": "3.5"
     },
     {
       "name": "petitparser",
@@ -404,7 +404,7 @@
       "languageVersion": "3.5"
     }
   ],
-  "generated": "2024-12-18T15:41:47.840682Z",
+  "generated": "2024-12-18T16:51:54.497339Z",
   "generator": "pub",
   "generatorVersion": "3.6.0",
   "flutterRoot": "file:///home/sumit/softwares/flutter",
