@@ -19,17 +19,18 @@ topics:
 version: 5.14.0
 
 environment:
-  sdk: ">=3.5.0 <4.0.0"
-  flutter: ">=3.24.0"
+  sdk: ">=3.12.0 <4.0.0"
+  flutter: ">=3.44.0"
 
 dependencies:
-  ffi: ">=1.1.0 <3.0.0"
+  ffi: ">=2.2.0 <3.0.0"
   flutter:
     sdk: flutter
   flutter_web_plugins:
     sdk: flutter
-  http: ">=1.2.2 <2.0.0"
-  image: ^4.5.0
+  http: ">=1.6.0 <2.0.0"
+  image:
+    git: https://github.com/kumsumit/image.git
   meta: ">=1.15.0 <2.0.0"
   pdf:
     git: https://github.com/kumsumit/pdf.git
@@ -37,19 +38,15 @@ dependencies:
     git: https://github.com/kumsumit/widget_wrapper.git
   plugin_platform_interface:
     git: https://github.com/kumsumit/plugin_platform_interface.git
-  web: ^1.1.0
+  web: ^1.1.1
 
 dev_dependencies:
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter
-  mockito: ^5.4.4
+  mockito: ^5.6.4
 
-dependency_overrides:
-  pdf:
-    path: ../pdf
-  pdf_widget_wrapper:
-   path: ../widget_wrapper
+
 
 flutter:
   plugin:
