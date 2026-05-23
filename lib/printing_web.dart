@@ -312,8 +312,30 @@ class PrintingPlugin extends PrintingPlatform {
     String html,
     String? baseUrl,
     PdfPageFormat format,
-  ) {
-    throw UnimplementedError();
+  ) async {
+    // Generate a temporary hidden iframe with the HTML content
+    final frame = web.document.createElement('iframe') as web.HTMLIFrameElement;
+    frame.setAttribute(
+      'style',
+      'visibility: hidden; height: 0; width: 0; position: absolute;',
+    );
+
+    web.document.body!.append(frame);
+
+    final doc = frame.contentWindow!.document;
+    doc.open();
+    if (baseUrl != null) {
+      doc.write('<base href="$baseUrl">'.toJS);
+    }
+    doc.write(html.toJS);
+    doc.close();
+
+    // Use window.print() on that iframe if it were possible to capture PDF,
+    // but browser security prevents direct PDF capture from JS easily.
+    // However, we can use the same logic as layoutPdf to at least allow printing it.
+
+    throw UnimplementedError(
+        'capture PDF from HTML is not supported on web. Use layoutPdf instead.');
   }
 
   @override

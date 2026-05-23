@@ -26,9 +26,8 @@ class PdfPreviewData extends ChangeNotifier {
     PdfPageFormat? initialPageFormat,
     required this.buildDocument,
     required Map<String, PdfPageFormat> pageFormats,
-    required ComputePageFormat onComputeActualPageFormat,
-  })  : assert(pageFormats.isNotEmpty),
-        _onComputeActualPageFormat = onComputeActualPageFormat {
+    required this._onComputeActualPageFormat,
+  })  : assert(pageFormats.isNotEmpty) {
     _pageFormat = initialPageFormat ??
         (pageFormats[localPageFormat] ?? pageFormats.values.first);
   }

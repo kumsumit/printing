@@ -28,6 +28,7 @@ public class PrintingHandler implements MethodChannel.MethodCallHandler {
             switch (call.method) {
                 case "printPdf": {
                     final String name = call.argument("name");
+                    final String printer = call.argument("printer");
                     Double width = call.argument("width");
                     Double height = call.argument("height");
 
@@ -36,7 +37,12 @@ public class PrintingHandler implements MethodChannel.MethodCallHandler {
                     assert name != null;
                     assert width != null;
                     assert height != null;
-                    printJob.printPdf(name, width, height);
+
+                    if (printer != null) {
+                        printJob.directPrintPdf(name, printer, width, height);
+                    } else {
+                        printJob.printPdf(name, width, height);
+                    }
 
                     result.success(1);
                     break;
@@ -93,6 +99,10 @@ public class PrintingHandler implements MethodChannel.MethodCallHandler {
                 }
                 case "printingInfo": {
                     result.success(PrintingJob.printingInfo());
+                    break;
+                }
+                case "listPrinters": {
+                    PrintingJob.listPrinters(context, result);
                     break;
                 }
                 case "rasterPdf": {

@@ -123,10 +123,10 @@ class PdfPreview extends StatefulWidget {
     this.onPageFormatChanged,
     this.dpi,
     this.actionBarTheme = const PdfActionBarTheme(),
-    required CustomPdfPagesBuilder pagesBuilder,
+    required CustomPdfPagesBuilder this._pagesBuilder,
     this.enableScrollToPage = false,
     this.onZoomChanged,
-  }) : _pagesBuilder = pagesBuilder;
+  });
 
   static const _defaultPageFormats = <String, PdfPageFormat>{
     'A4': PdfPageFormat.a4,

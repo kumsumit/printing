@@ -25,6 +25,8 @@ import android.graphics.Bitmap;
 import android.graphics.Matrix;
 import android.graphics.pdf.PdfRenderer;
 import android.net.Uri;
+import android.net.nsd.NsdManager;
+import android.net.nsd.NsdServiceInfo;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.CancellationSignal;
@@ -51,11 +53,16 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+
+import io.flutter.plugin.common.MethodChannel;
 
 /**
  * PrintJob
@@ -83,10 +90,11 @@ public class PrintingJob extends PrintDocumentAdapter {
         final boolean canRaster = Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP;
 
         HashMap<String, Object> result = new HashMap<>();
-        result.put("directPrint", false);
+        result.put("directPrint", true);
         result.put("dynamicLayout", canPrint);
         result.put("canPrint", canPrint);
         result.put("canConvertHtml", canPrint);
+        result.put("canListPrinters", true);
         result.put("canShare", true);
         result.put("canRaster", canRaster);
         return result;
@@ -178,6 +186,108 @@ public class PrintingJob extends PrintDocumentAdapter {
         });
 
         thread.start();
+    }
+
+    void directPrintPdf(final String name, final String printer, final Double width, final Double height) {
+        this.jobName = name;
+
+        printing.onLayout(this, width, height, 0, 0, 0, 0);
+
+        new Thread(() -> {
+            try {
+                final String[] parts = printer.split(":");
+                final String host = parts[0];
+                final int port = parts.length > 1 ? Integer.parseInt(parts[1]) : 9100;
+
+                final long startTime = System.currentTimeMillis();
+                while (documentData == null && System.currentTimeMillis() - startTime < 60000) {
+                    Thread.sleep(100);
+                }
+
+                if (documentData == null) {
+                    throw new IOException("Timeout waiting for document data");
+                }
+
+                try (Socket socket = new Socket(host, port);
+                        OutputStream out = socket.getOutputStream()) {
+                    out.write(documentData);
+                    out.flush();
+                }
+
+                new Handler(Looper.getMainLooper()).post(() -> printing.onCompleted(PrintingJob.this, true, null));
+            } catch (Exception e) {
+                new Handler(Looper.getMainLooper()).post(() -> printing.onCompleted(PrintingJob.this, false, e.getMessage()));
+            }
+        }).start();
+    }
+
+    static void listPrinters(Context context, final MethodChannel.Result result) {
+        final NsdManager nsdManager = (NsdManager) context.getSystemService(Context.NSD_SERVICE);
+        final List<HashMap<String, Object>> printers = new ArrayList<>();
+        final String[] serviceTypes = {"_ipp._tcp.", "_pdl-datastream._tcp."};
+        final int[] discoveryCount = {serviceTypes.length};
+
+        for (final String serviceType : serviceTypes) {
+            nsdManager.discoverServices(serviceType, NsdManager.PROTOCOL_DNS_SD, new NsdManager.DiscoveryListener() {
+                @Override
+                public void onStartDiscoveryFailed(String serviceType, int errorCode) {
+                    checkDone();
+                }
+
+                @Override
+                public void onStopDiscoveryFailed(String serviceType, int errorCode) {
+                    nsdManager.stopServiceDiscovery(this);
+                }
+
+                @Override
+                public void onDiscoveryStarted(String serviceType) {}
+
+                @Override
+                public void onDiscoveryStopped(String serviceType) {}
+
+                @Override
+                public void onServiceFound(NsdServiceInfo serviceInfo) {
+                    nsdManager.resolveService(serviceInfo, new NsdManager.ResolveListener() {
+                        @Override
+                        public void onResolveFailed(NsdServiceInfo serviceInfo, int errorCode) {}
+
+                        @Override
+                        public void onServiceResolved(NsdServiceInfo serviceInfo) {
+                            HashMap<String, Object> printer = new HashMap<>();
+                            String host = serviceInfo.getHost().getHostAddress();
+                            int port = serviceInfo.getPort();
+                            printer.put("url", host + ":" + port);
+                            printer.put("name", serviceInfo.getServiceName());
+                            printer.put("model", serviceInfo.getServiceType());
+                            printer.put("location", host);
+                            printer.put("available", true);
+                            printer.put("default", false);
+
+                            synchronized (printers) {
+                                printers.add(printer);
+                            }
+                        }
+                    });
+                }
+
+                @Override
+                public void onServiceLost(NsdServiceInfo serviceInfo) {}
+
+                private void checkDone() {
+                    synchronized (discoveryCount) {
+                        discoveryCount[0]--;
+                        if (discoveryCount[0] == 0) {
+                            new Handler(Looper.getMainLooper()).post(() -> result.success(printers));
+                        }
+                    }
+                }
+            });
+        }
+
+        // Stop discovery after 5 seconds
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            new Handler(Looper.getMainLooper()).post(() -> result.success(printers));
+        }, 5000);
     }
 
     void printPdf(@NonNull String name, @NonNull Double width, @NonNull Double height) {

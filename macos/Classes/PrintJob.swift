@@ -192,58 +192,40 @@ public class PrintJob: NSView, NSSharingServicePickerDelegate {
     }
 
     public static func sharePdf(data: Data, withSourceRect rect: CGRect, andName name: String, andWindow view: NSView) {
-        let tempFile = NSTemporaryDirectory() + name
-        let file = NSURL(fileURLWithPath: tempFile)
+        let tmpDirURL = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+        let fileURL = tmpDirURL.appendingPathComponent(name)
 
         do {
-            try data.write(to: file.absoluteURL!)
+            try data.write(to: fileURL, options: .atomic)
         } catch {
-            print("Unable to save the pdf file to \(tempFile)")
+            print("sharePdf error: \(error.localizedDescription)")
             return
         }
 
-        let sharingServicePicker = NSSharingServicePicker(items: [file])
+        let sharingServicePicker = NSSharingServicePicker(items: [fileURL])
         sharingServicePicker.show(relativeTo: rect, of: view, preferredEdge: NSRectEdge.maxY)
-
-//        DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(2)) {
-//            let fileManager = FileManager.default
-//            do {
-//                try fileManager.removeItem(atPath: tempFile)
-//            } catch let error as NSError {
-//                print("Unable to delete \(tempFile): \(error)")
-//            }
-//        }
     }
+
+    private var urlObservation: NSKeyValueObservation?
 
     @available(macOS 11.0, *)
     public func convertHtml(_ data: String, withPageSize size: CGRect, andMargin margin: CGRect, andBaseUrl baseUrl: URL?) {
-        let tempFile = NSTemporaryDirectory() + NSUUID().uuidString
-        let directoryURL = URL(fileURLWithPath: tempFile)
-
-        let printOpts: [NSPrintInfo.AttributeKey: Any] = [NSPrintInfo.AttributeKey.jobDisposition: NSPrintInfo.JobDisposition.save, NSPrintInfo.AttributeKey.jobSavingURL: directoryURL]
-        let printInfo = NSPrintInfo(dictionary: printOpts)
-        printInfo.horizontalPagination = NSPrintInfo.PaginationMode.automatic
-        printInfo.verticalPagination = NSPrintInfo.PaginationMode.automatic
-        printInfo.paperSize.width = size.width
-        printInfo.paperSize.height = size.height
-        printInfo.topMargin = margin.minY
-        printInfo.leftMargin = margin.minX
-        printInfo.rightMargin = size.width - margin.maxX
-        printInfo.bottomMargin = size.height - margin.maxY
-
         let webView = WKWebView(frame: CGRect.zero)
         webView.loadHTMLString(data, baseURL: baseUrl)
-        let when = DispatchTime.now() + 1
 
-        DispatchQueue.main.asyncAfter(deadline: when) {
-            webView.createPDF { result in
-                switch result {
-                case let .success(data):
-                    self.printing.onHtmlRendered(printJob: self, pdfData: data)
-                    let fileManager = FileManager.default
-                    try? fileManager.removeItem(atPath: tempFile)
-                case let .failure(error):
-                    self.printing.onHtmlError(printJob: self, error: "Unable to create PDF: \(error.localizedDescription)")
+        urlObservation = webView.observe(\.isLoading, options: [.new]) { [weak self] _, change in
+            guard let self = self, let isLoading = change.newValue, !isLoading else { return }
+
+            // Web view finished loading, but give it a tiny bit for any JS rendering
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                webView.createPDF { result in
+                    switch result {
+                    case let .success(data):
+                        self.printing.onHtmlRendered(printJob: self, pdfData: data)
+                    case let .failure(error):
+                        self.printing.onHtmlError(printJob: self, error: "Unable to create PDF: \(error.localizedDescription)")
+                    }
+                    self.urlObservation = nil
                 }
             }
         }
