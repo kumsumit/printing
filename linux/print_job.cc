@@ -325,6 +325,7 @@ void print_job::raster_pdf(const uint8_t data[],
 FlValue* print_job::printing_info() {
   FlValue* result = fl_value_new_map();
   fl_value_set_string(result, "canPrint", fl_value_new_bool(true));
+  fl_value_set_string(result, "canConvertHtml", fl_value_new_bool(false));
   fl_value_set_string(result, "canShare", fl_value_new_bool(true));
   fl_value_set_string(result, "canRaster", fl_value_new_bool(true));
   fl_value_set_string(result, "canListPrinters", fl_value_new_bool(true));

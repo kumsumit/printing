@@ -398,8 +398,13 @@ void PrintJob::rasterPdf(std::vector<uint8_t> data,
 
 std::map<std::string, bool> PrintJob::printingInfo() {
   return std::map<std::string, bool>{
-      {"directPrint", true},     {"dynamicLayout", true}, {"canPrint", true},
-      {"canListPrinters", true}, {"canShare", true},      {"canRaster", true},
+      {"directPrint", true},
+      {"dynamicLayout", true},
+      {"canPrint", true},
+      {"canConvertHtml", false},
+      {"canListPrinters", true},
+      {"canShare", true},
+      {"canRaster", true},
   };
 }
 

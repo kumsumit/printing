@@ -36,6 +36,7 @@ public class PrintJob: UIPrintPageRenderer, UIPrintInteractionControllerDelegate
     private var jobName: String?
     private var printerName: String?
     private var orientation: UIPrintInfo.Orientation?
+    private var outputType: UIPrintInfo.OutputType = .general
     private let semaphore = DispatchSemaphore(value: 0)
     private var dynamic = false
     private var currentSize: CGSize?
@@ -85,7 +86,7 @@ public class PrintJob: UIPrintPageRenderer, UIPrintInteractionControllerDelegate
 
             let printInfo = UIPrintInfo.printInfo()
             printInfo.jobName = jobName!
-            printInfo.outputType = .general
+            printInfo.outputType = outputType
             if orientation != nil {
                 printInfo.orientation = orientation!
                 orientation = nil
@@ -174,6 +175,7 @@ public class PrintJob: UIPrintPageRenderer, UIPrintInteractionControllerDelegate
         currentSize = size
         dynamic = dyn
         self.forceCustomPrintPaper = forceCustomPrintPaper
+        outputType = type
 
         let printing = UIPrintInteractionController.isPrintingAvailable
         if !printing {
@@ -252,7 +254,7 @@ public class PrintJob: UIPrintPageRenderer, UIPrintInteractionControllerDelegate
         )
     }
 
-    static func sharePdf(data: Data, withSourceRect rect: CGRect, andName name: String, subject: String?, body: String?) {
+    static func sharePdf(data: Data, withSourceRect rect: CGRect, andName name: String, subject: String?, body: String?, emails: [String]?) {
         let tmpDirURL = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
         let fileURL = tmpDirURL.appendingPathComponent(name)
 
@@ -263,18 +265,36 @@ public class PrintJob: UIPrintPageRenderer, UIPrintInteractionControllerDelegate
             return
         }
 
-        let activityViewController = UIActivityViewController(activityItems: [fileURL, body as Any], applicationActivities: nil)
-        activityViewController.setValue(subject, forKey: "subject")
+        var activityItems: [Any] = [fileURL]
+        if let body = body {
+            activityItems.append(body)
+        }
+
+        let activityViewController = UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+        if let subject = subject {
+            activityViewController.setValue(subject, forKey: "subject")
+        }
+
+        if let emails = emails, !emails.isEmpty {
+            activityViewController.setValue(emails, forKey: "recipients")
+        }
+
         if UIDevice.current.userInterfaceIdiom == .pad {
-            let controller: UIViewController? = UIApplication.shared.keyWindow?.rootViewController
+            let scene = UIApplication.shared.connectedScenes
+                .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene
+            let controller: UIViewController? = scene?.windows.first(where: { $0.isKeyWindow })?.rootViewController
             activityViewController.popoverPresentationController?.sourceView = controller?.view
             activityViewController.popoverPresentationController?.sourceRect = rect
         }
-        UIApplication.shared.keyWindow?.rootViewController?.present(activityViewController, animated: true)
+        let scene = UIApplication.shared.connectedScenes
+            .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene
+        scene?.windows.first(where: { $0.isKeyWindow })?.rootViewController?.present(activityViewController, animated: true)
     }
 
     func convertHtml(_ data: String, withPageSize rect: CGRect, andMargin margin: CGRect, andBaseUrl baseUrl: URL?) {
-        let viewController = UIApplication.shared.delegate?.window?!.rootViewController
+        let scene = UIApplication.shared.connectedScenes
+            .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene
+        let viewController = scene?.windows.first(where: { $0.isKeyWindow })?.rootViewController
         let wkWebView = WKWebView(frame: viewController!.view.bounds)
         wkWebView.isHidden = true
         wkWebView.tag = 100
@@ -353,7 +373,9 @@ public class PrintJob: UIPrintPageRenderer, UIPrintInteractionControllerDelegate
         }
 
         if UIDevice.current.userInterfaceIdiom == .pad {
-            let viewController: UIViewController? = UIApplication.shared.keyWindow?.rootViewController
+            let scene = UIApplication.shared.connectedScenes
+                .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene
+            let viewController: UIViewController? = scene?.windows.first(where: { $0.isKeyWindow })?.rootViewController
             if viewController != nil {
                 controller.present(from: rect, in: viewController!.view, animated: true, completionHandler: pickPrinterCompletionHandler)
                 return
@@ -425,10 +447,35 @@ public class PrintJob: UIPrintPageRenderer, UIPrintInteractionControllerDelegate
             "directPrint": true,
             "dynamicLayout": true,
             "canPrint": true,
+            "canConvertHtml": true,
             "canShare": true,
             "canRaster": true,
-            "canListPrinters": false,
+            "canListPrinters": true,
         ]
         return data
+    }
+
+    static var discoverySession: UIPrinterDiscoverySession?
+
+    public static func listPrinters(result: @escaping FlutterResult) {
+        discoverySession = UIPrinterDiscoverySession(printerURLs: nil)
+        discoverySession?.startDiscovery { _ in
+            let printers = discoverySession?.printers ?? []
+            var resultPrinters: [NSDictionary] = []
+
+            for printer in printers {
+                let data: NSDictionary = [
+                    "url": printer.url.absoluteString as Any,
+                    "name": printer.displayName as Any,
+                    "model": printer.makeAndModel as Any,
+                    "location": printer.displayLocation as Any,
+                ]
+                resultPrinters.append(data)
+            }
+
+            result(resultPrinters)
+            discoverySession?.stopDiscovery()
+            discoverySession = nil
+        }
     }
 }
